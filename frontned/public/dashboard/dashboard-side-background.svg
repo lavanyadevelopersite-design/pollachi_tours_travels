@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="720" viewBox="0 0 420 720" fill="none">
+  <defs>
+    <linearGradient id="bgSky" x1="210" y1="0" x2="210" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E0F2FE" stop-opacity="0"/>
+      <stop offset="0.35" stop-color="#BAE6FD" stop-opacity="0.15"/>
+      <stop offset="1" stop-color="#7DD3FC" stop-opacity="0.25"/>
+    </linearGradient>
+    <linearGradient id="bgOcean" x1="0" y1="420" x2="420" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#38BDF8" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#0EA5E9" stop-opacity="0.55"/>
+    </linearGradient>
+    <linearGradient id="bgSand" x1="210" y1="520" x2="210" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FDE68A" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#FBBF24" stop-opacity="0.35"/>
+    </linearGradient>
+    <linearGradient id="bgMountain" x1="120" y1="300" x2="280" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#94A3B8" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#64748B" stop-opacity="0.2"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="420" height="720" fill="url(#bgSky)"/>
+
+  <path d="M40 520 C120 420 200 460 280 400 C330 370 380 390 420 420 L420 560 L40 560 Z" fill="url(#bgMountain)"/>
+  <path d="M120 540 C180 480 240 500 300 460 C340 435 380 450 420 470 L420 580 L80 580 Z" fill="#64748B" fill-opacity="0.12"/>
+
+  <path d="M0 560 C100 530 200 550 320 520 C360 510 390 515 420 525 L420 720 L0 720 Z" fill="url(#bgOcean)"/>
+
+  <path d="M180 600 C260 580 340 590 420 570 L420 720 L140 720 C160 680 170 640 180 600 Z" fill="url(#bgSand)"/>
+
+  <path d="M330 720 L330 420 C332 380 328 340 340 300" stroke="#92400E" stroke-width="16" stroke-linecap="round" fill="none" opacity="0.7"/>
+  <path d="M338 720 L338 440 C340 400 335 360 348 320" stroke="#A16207" stroke-width="8" stroke-linecap="round" fill="none" opacity="0.45"/>
+
+  <g opacity="0.75">
+    <path d="M340 300 Q390 260 410 290 Q370 275 340 300" fill="#15803D"/>
+    <path d="M340 300 Q360 220 400 240 Q375 245 340 300" fill="#16A34A"/>
+    <path d="M340 300 Q300 230 280 260 Q310 255 340 300" fill="#22C55E"/>
+    <path d="M340 300 Q280 280 270 320 Q300 300 340 300" fill="#166534"/>
+    <path d="M340 300 Q400 310 420 350 Q385 325 340 300" fill="#14532D"/>
+    <path d="M340 300 Q320 250 350 210 Q340 245 340 300" fill="#4ADE80"/>
+  </g>
+
+  <path d="M390 720 L395 520" stroke="#92400E" stroke-width="10" stroke-linecap="round" opacity="0.55"/>
+  <g opacity="0.6">
+    <path d="M395 520 Q420 490 430 510 Q410 500 395 520" fill="#16A34A"/>
+    <path d="M395 520 Q410 470 430 480 Q415 485 395 520" fill="#22C55E"/>
+    <path d="M395 520 Q370 490 365 515 Q380 505 395 520" fill="#15803D"/>
+  </g>
+
+  <ellipse cx="300" cy="120" rx="55" ry="18" fill="#FFFFFF" fill-opacity="0.35"/>
+  <ellipse cx="340" cy="115" rx="35" ry="12" fill="#FFFFFF" fill-opacity="0.25"/>
+  <ellipse cx="250" cy="160" rx="40" ry="14" fill="#FFFFFF" fill-opacity="0.2"/>
+
+  <ellipse cx="260" cy="640" rx="45" ry="6" fill="#FFFFFF" fill-opacity="0.2"/>
+  <ellipse cx="340" cy="670" rx="30" ry="4" fill="#FFFFFF" fill-opacity="0.15"/>
+</svg>

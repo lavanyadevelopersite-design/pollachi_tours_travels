@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200">
+  <defs>
+    <linearGradient id="msky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#bae6fd"/>
+      <stop offset="100%" stop-color="#e0f2fe"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="200" fill="url(#msky)"/>
+  <path d="M0 200 L0 120 L60 40 L120 100 L180 30 L240 90 L320 50 L320 200 Z" fill="#64748b"/>
+  <path d="M40 200 L100 80 L160 130 L220 60 L280 110 L320 70 L320 200 Z" fill="#475569"/>
+  <path d="M120 200 L160 90 L200 200 Z" fill="#f8fafc"/>
+  <path d="M180 200 L220 110 L260 200 Z" fill="#f1f5f9"/>
+</svg>

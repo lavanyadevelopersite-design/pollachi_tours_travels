@@ -220,7 +220,7 @@ const buildWhatsAppSettingsResponse = async (map = {}) => {
     needsQrScan:
       Boolean(map[WHATSAPP_KEYS.sessionId]) &&
       !sessionConnected &&
-      ['need_scan', 'disconnected', ''].includes(wasenderSession.normalizeSessionStatus(sessionStatus)),
+      wasenderSession.needsQrScan(sessionStatus),
   };
 };
 
@@ -365,6 +365,19 @@ const syncWhatsAppSessionStatus = async (actorId = null) => {
     return getWhatsAppSettings();
   } catch (error) {
     logger.warn('Failed to sync WhatsApp session status: %s', error.message);
+    if (error.statusCode === 404) {
+      await upsertSettings(
+        [
+          {
+            key: WHATSAPP_KEYS.sessionStatus,
+            value: 'DISCONNECTED',
+            group: 'whatsapp',
+            description: 'Wasender session status',
+          },
+        ],
+        actorId
+      );
+    }
     return getWhatsAppSettings();
   }
 };
@@ -410,7 +423,9 @@ const startWhatsAppQrConnect = async (payload = {}, actorId = null) => {
 
   await persistSessionSnapshot({ ...session, id: sessionId }, actorId);
 
-  if (wasenderSession.isSessionConnected(session.status) && session.api_key) {
+  const forceReconnect = Boolean(payload.forceReconnect ?? payload.force_reconnect);
+
+  if (wasenderSession.isSessionConnected(session.status) && session.api_key && !forceReconnect) {
     return {
       sessionId,
       status: session.status,
@@ -420,25 +435,60 @@ const startWhatsAppQrConnect = async (payload = {}, actorId = null) => {
     };
   }
 
-  const forceReconnect = Boolean(payload.forceReconnect ?? payload.force_reconnect);
   if (forceReconnect && sessionId) {
     try {
       await wasenderSession.disconnectSession(token, sessionId);
+      await upsertSettings(
+        [
+          {
+            key: WHATSAPP_KEYS.sessionStatus,
+            value: 'NEED_SCAN',
+            group: 'whatsapp',
+            description: 'Wasender session status',
+          },
+        ],
+        actorId
+      );
     } catch (error) {
       logger.warn('Wasender pre-connect disconnect failed: %s', error.message);
     }
   }
 
   const connectResult = await wasenderSession.connectSession(token, sessionId, 'qr');
+  if (
+    wasenderSession.isSessionConnected(connectResult?.status) &&
+    !wasenderSession.extractQrCode(connectResult)
+  ) {
+    await persistSessionSnapshot({ ...session, ...connectResult, id: sessionId }, actorId);
+    return {
+      sessionId,
+      status: connectResult.status,
+      qrCode: null,
+      phoneNumber: session.phone_number || phoneNumber,
+      connected: true,
+    };
+  }
+
   const { qrCode, status } = await wasenderSession.fetchSessionQrCode(token, sessionId, {
     connectResult,
-    session,
+    session: forceReconnect ? null : session,
   });
 
-  if (!qrCode && !wasenderSession.isSessionConnected(status)) {
+  if (!qrCode && wasenderSession.isSessionConnected(status)) {
+    await persistSessionSnapshot({ ...session, status, id: sessionId }, actorId);
+    return {
+      sessionId,
+      status,
+      qrCode: null,
+      phoneNumber: session.phone_number || phoneNumber,
+      connected: true,
+    };
+  }
+
+  if (!qrCode) {
     throw new AppError(
-      'Could not load QR code from Wasender. Click Refresh QR or disconnect the session at wasenderapi.com and try again.',
-      502
+      'Could not load QR code from Wasender. Open wasenderapi.com → WhatsApp Sessions, disconnect that session, then click Connect again.',
+      422
     );
   }
 
@@ -478,15 +528,46 @@ const refreshWhatsAppQrCode = async (actorId = null) => {
     throw new AppError('Start WhatsApp connection before refreshing the QR code', 400);
   }
 
+  try {
+    const session = await wasenderSession.getSession(token, sessionId);
+    if (wasenderSession.isSessionConnected(session.status)) {
+      await wasenderSession.disconnectSession(token, sessionId);
+    }
+  } catch (error) {
+    logger.warn('Wasender refresh disconnect failed: %s', error.message);
+  }
+
   const connectResult = await wasenderSession.connectSession(token, sessionId, 'qr');
+  if (
+    wasenderSession.isSessionConnected(connectResult?.status) &&
+    !wasenderSession.extractQrCode(connectResult)
+  ) {
+    await persistSessionSnapshot({ ...connectResult, id: sessionId }, actorId);
+    return {
+      sessionId,
+      status: connectResult.status,
+      qrCode: null,
+      connected: true,
+    };
+  }
+
   const { qrCode, status } = await wasenderSession.fetchSessionQrCode(token, sessionId, {
     connectResult,
   });
 
-  if (!qrCode && !wasenderSession.isSessionConnected(status)) {
+  if (!qrCode && wasenderSession.isSessionConnected(status)) {
+    return {
+      sessionId,
+      status,
+      qrCode: null,
+      connected: true,
+    };
+  }
+
+  if (!qrCode) {
     throw new AppError(
-      'Could not load QR code. Try Connect WhatsApp again or regenerate from Wasender dashboard.',
-      502
+      'Could not load QR code. Open wasenderapi.com → WhatsApp Sessions, disconnect the session, then click Connect again.',
+      422
     );
   }
 

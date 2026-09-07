@@ -4,7 +4,7 @@ import { Box, Button, Container, Stack, Typography, alpha } from '@mui/material'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import { useBranding } from '../../hooks/queries/useBranding';
-import { APP_NAME, resolveMediaUrl } from '../../utils/constants';
+import { APP_NAME, PUBLIC_ENQUIRY_PATH, resolveMediaUrl } from '../../utils/constants';
 
 function brandLogoSrc(path) {
   const url = resolveMediaUrl(path);
@@ -142,7 +142,7 @@ export default function EnquirySuccessPage() {
               variant="contained"
               size="large"
               startIcon={<AddCircleIcon />}
-              onClick={() => navigate('/enquire')}
+              onClick={() => navigate(PUBLIC_ENQUIRY_PATH)}
               sx={{
                 borderRadius: 2.5,
                 fontWeight: 800,

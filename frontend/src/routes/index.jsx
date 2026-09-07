@@ -7,6 +7,7 @@ import ProtectedRoute from './ProtectedRoute';
 import DriverRoute from './DriverRoute';
 import GuestRoute from './GuestRoute';
 import Loader from '../components/common/Loader';
+import { PUBLIC_ENQUIRY_PATH, PUBLIC_ENQUIRY_THANKS_PATH } from '../utils/constants';
 const Login = lazy(() => import('../pages/auth/Login'));
 const ForgotPassword = lazy(() => import('../pages/auth/ForgotPassword'));
 const DriverLogin = lazy(() => import('../pages/driver/DriverLogin'));
@@ -273,7 +274,7 @@ const router = createBrowserRouter([
     ],
   },
   {
-    path: '/enquire',
+    path: PUBLIC_ENQUIRY_PATH,
     element: (
       <SuspenseWrap>
         <PublicEnquiryPage />
@@ -281,7 +282,7 @@ const router = createBrowserRouter([
     ),
   },
   {
-    path: '/enquire/thanks',
+    path: PUBLIC_ENQUIRY_THANKS_PATH,
     element: (
       <SuspenseWrap>
         <EnquirySuccessPage />
@@ -289,12 +290,20 @@ const router = createBrowserRouter([
     ),
   },
   {
+    path: '/enquire',
+    element: <Navigate to={PUBLIC_ENQUIRY_PATH} replace />,
+  },
+  {
+    path: '/enquire/thanks',
+    element: <Navigate to={PUBLIC_ENQUIRY_THANKS_PATH} replace />,
+  },
+  {
     path: '/enquiries',
-    element: <Navigate to="/enquire" replace />,
+    element: <Navigate to={PUBLIC_ENQUIRY_PATH} replace />,
   },
   {
     path: '/enquiries/success',
-    element: <Navigate to="/enquire/thanks" replace />,
+    element: <Navigate to={PUBLIC_ENQUIRY_THANKS_PATH} replace />,
   },
   {
     path: '/feedback/:token',

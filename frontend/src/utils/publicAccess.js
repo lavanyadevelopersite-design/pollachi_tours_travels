@@ -12,6 +12,8 @@ export const isPublicCustomerPage = (pathname = window.location.pathname) => {
     /^\/itinerary\/.+/.test(path) ||
     /^\/feedback\/.+/.test(path) ||
     /^\/d\/[a-z0-9]+$/.test(path) ||
+    path === '/make_your_trip' ||
+    path.startsWith('/make_your_trip/') ||
     path === '/enquire' ||
     path.startsWith('/enquire/') ||
     path === '/enquiries' ||

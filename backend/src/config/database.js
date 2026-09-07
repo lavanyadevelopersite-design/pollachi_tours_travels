@@ -550,6 +550,26 @@ const connectDatabase = async () => {
     }
 
     try {
+      const [desigTable] = await sequelize.query("SHOW TABLES LIKE 'tt_designations'");
+      if (desigTable && desigTable.length > 0) {
+        const [codeCol] = await sequelize.query(
+          "SHOW COLUMNS FROM tt_designations LIKE 'designation_code'"
+        );
+        if (codeCol?.[0]?.Null === 'NO') {
+          await sequelize.query(
+            'ALTER TABLE tt_designations MODIFY COLUMN designation_code VARCHAR(50) NULL'
+          );
+          logger.info('Made tt_designations.designation_code optional');
+        }
+      }
+    } catch (desigCodeErr) {
+      logger.warn(
+        'Could not make tt_designations.designation_code optional:',
+        desigCodeErr.message
+      );
+    }
+
+    try {
       const noteColumns = [
         ['lead_status_id', 'CHAR(36) NULL'],
         ['lead_status_name', 'VARCHAR(100) NULL'],

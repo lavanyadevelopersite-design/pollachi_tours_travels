@@ -89,7 +89,7 @@ const departmentBody = z.object({
 
 const designationBody = z.object({
   designation_name: z.string().trim().min(1, 'Designation name is required').max(150),
-  designation_code: z.string().trim().min(1, 'Designation code is required').max(50),
+  designation_code: z.string().trim().max(50).optional().nullable().or(z.literal('')),
   department_id: z.string().uuid('Department is required'),
   hierarchy_level: z.coerce.number().int().optional().nullable(),
   description: optionalString,

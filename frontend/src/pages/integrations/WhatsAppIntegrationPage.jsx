@@ -47,19 +47,38 @@ const defaults = {
   uploadUrl: 'https://www.wasenderapi.com/api/upload',
 };
 
-const extractConnectPayload = (result) => result?.data?.data || result?.data || {};
+const extractConnectPayload = (result) => result?.data?.data || result?.data || result || {};
 
-const extractQrValue = (payload) =>
-  payload?.qrCode || payload?.qrcode || payload?.qr_code || payload?.qr || '';
+const extractQrValue = (payload) => {
+  if (!payload) return '';
+  if (typeof payload === 'string') return payload;
+  return (
+    payload.qrCode ||
+    payload.qrcode ||
+    payload.qr_code ||
+    payload.qr ||
+    payload.data?.qrCode ||
+    payload.data?.qrcode ||
+    payload.data?.qr ||
+    ''
+  );
+};
 
-const isDirectQrImage = (value) =>
-  Boolean(value) &&
-  (String(value).startsWith('data:image') || /^https?:\/\//i.test(String(value)));
+const isDirectQrImage = (value) => {
+  const str = String(value || '');
+  return (
+    str.startsWith('data:image') ||
+    /^https?:\/\//i.test(str) ||
+    str.startsWith('iVBOR') ||
+    str.startsWith('/9j/')
+  );
+};
 
 export default function WhatsAppIntegrationPage() {
   const navigate = useNavigate();
   const [qrImage, setQrImage] = useState('');
   const [pendingQr, setPendingQr] = useState('');
+  const [qrError, setQrError] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [waitingForScan, setWaitingForScan] = useState(false);
   const formInitializedRef = useRef(false);
@@ -69,7 +88,6 @@ export default function WhatsAppIntegrationPage() {
     saveWhatsApp,
     connectWhatsApp,
     refreshWhatsAppQr,
-    syncWhatsAppSession,
     disconnectWhatsApp,
   } = useIntegrationMutation();
 
@@ -112,7 +130,11 @@ export default function WhatsAppIntegrationPage() {
     }
 
     if (isDirectQrImage(qrString)) {
-      setQrImage(qrString);
+      setQrImage(
+        qrString.startsWith('iVBOR') || qrString.startsWith('/9j/')
+          ? `data:image/png;base64,${qrString}`
+          : qrString
+      );
       return undefined;
     }
 
@@ -131,20 +153,10 @@ export default function WhatsAppIntegrationPage() {
   }, [pendingQr]);
 
   useEffect(() => {
-    if (!waitingForScan || data?.sessionConnected) return undefined;
-
-    const timer = setInterval(() => {
-      syncWhatsAppSession.mutate();
-    }, 3000);
-
-    return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [waitingForScan, data?.sessionConnected]);
-
-  useEffect(() => {
     if (data?.sessionConnected) {
       setWaitingForScan(false);
       setPendingQr('');
+      setQrError('');
     }
   }, [data?.sessionConnected]);
 
@@ -152,8 +164,8 @@ export default function WhatsAppIntegrationPage() {
   const messagingReady = Boolean(data?.active);
 
   const statusLabel = useMemo(() => {
-    if (sessionLinked) return 'Connected';
     if (waitingForScan) return 'Waiting for scan';
+    if (sessionLinked) return 'Connected';
     if (messagingReady) return 'API ready — link number';
     return 'Not Connected';
   }, [sessionLinked, waitingForScan, messagingReady]);
@@ -164,37 +176,53 @@ export default function WhatsAppIntegrationPage() {
     await saveWhatsApp.mutateAsync(values);
   });
 
-  const handleConnect = async () => {
-    const values = getValues();
-    const result = await connectWhatsApp.mutateAsync({
-      phoneNumber: values.phoneNumber,
-      personalAccessToken: values.personalAccessToken,
-      forceReconnect: waitingForScan,
-    });
+  const applyQrFromResult = (result) => {
     const payload = extractConnectPayload(result);
-    if (payload?.connected) {
+    const qr = extractQrValue(payload);
+    if (payload?.connected && !qr) {
       setWaitingForScan(false);
       setPendingQr('');
-      await refetch();
-      return;
-    }
-
-    let qr = extractQrValue(payload);
-    if (!qr) {
-      const refresh = await refreshWhatsAppQr.mutateAsync();
-      qr = extractQrValue(extractConnectPayload(refresh));
+      setQrError('');
+      return false;
     }
 
     setPendingQr(qr);
     setWaitingForScan(true);
+    setQrError(qr ? '' : 'Could not load QR code. Click Refresh QR.');
+    return Boolean(qr);
+  };
+
+  const handleConnect = async (forceReconnect = waitingForScan) => {
+    const values = getValues();
+    const result = await connectWhatsApp.mutateAsync({
+      phoneNumber: values.phoneNumber,
+      personalAccessToken: values.personalAccessToken,
+      forceReconnect,
+    });
+    const payload = extractConnectPayload(result);
+    let qr = extractQrValue(payload);
+    if (payload?.connected && !qr) {
+      setWaitingForScan(false);
+      setPendingQr('');
+      setQrError('');
+      await refetch();
+      return;
+    }
+    if (!qr) {
+      const refresh = await refreshWhatsAppQr.mutateAsync();
+      qr = extractQrValue(extractConnectPayload(refresh));
+    }
+    setPendingQr(qr);
+    setWaitingForScan(true);
+    setQrError(qr ? '' : 'Could not load QR code. Click Refresh QR.');
   };
 
   const handleRefreshQr = async () => {
     const result = await refreshWhatsAppQr.mutateAsync();
-    const payload = extractConnectPayload(result);
-    setPendingQr(extractQrValue(payload));
-    setWaitingForScan(true);
+    applyQrFromResult(result);
   };
+
+  const handleRelink = () => handleConnect(true);
 
   return (
     <Box sx={{ pb: 4 }}>
@@ -244,7 +272,7 @@ export default function WhatsAppIntegrationPage() {
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               <Chip
                 label={statusLabel}
-                color={sessionLinked ? 'success' : waitingForScan ? 'info' : 'warning'}
+                color={waitingForScan ? 'info' : sessionLinked ? 'success' : 'warning'}
                 sx={{ fontWeight: 700 }}
               />
               {data?.linkedPhone && (
@@ -301,22 +329,39 @@ export default function WhatsAppIntegrationPage() {
                       )
                     }
                     disabled={connectWhatsApp.isPending}
-                    onClick={handleConnect}
+                    onClick={() => handleConnect()}
                     sx={{ bgcolor: '#25D366', '&:hover': { bgcolor: '#1ebe57' } }}
                   >
                     {waitingForScan ? 'Regenerate QR' : 'Connect WhatsApp'}
                   </Button>
                 )}
                 {sessionLinked && (
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    startIcon={<LinkOffIcon />}
-                    disabled={disconnectWhatsApp.isPending}
-                    onClick={() => disconnectWhatsApp.mutate()}
-                  >
-                    Disconnect
-                  </Button>
+                  <>
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      startIcon={<LinkOffIcon />}
+                      disabled={disconnectWhatsApp.isPending}
+                      onClick={() => disconnectWhatsApp.mutate()}
+                    >
+                      Disconnect
+                    </Button>
+                    <Button
+                      variant="contained"
+                      startIcon={
+                        connectWhatsApp.isPending || refreshWhatsAppQr.isPending ? (
+                          <CircularProgress size={18} color="inherit" />
+                        ) : (
+                          <QrCodeScannerIcon />
+                        )
+                      }
+                      disabled={connectWhatsApp.isPending || refreshWhatsAppQr.isPending}
+                      onClick={handleRelink}
+                      sx={{ bgcolor: '#25D366', '&:hover': { bgcolor: '#1ebe57' } }}
+                    >
+                      Show QR / Relink
+                    </Button>
+                  </>
                 )}
                 {waitingForScan && !sessionLinked && (
                   <Button
@@ -337,29 +382,10 @@ export default function WhatsAppIntegrationPage() {
           <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider', height: '100%' }}>
             <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
               <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>
-                Step 2 — Scan QR code
+                {waitingForScan || !sessionLinked ? 'Step 2 — Scan QR code' : 'Step 2 — Connection status'}
               </Typography>
 
-              {sessionLinked ? (
-                <Box
-                  sx={{
-                    py: 4,
-                    px: 2,
-                    textAlign: 'center',
-                    borderRadius: 3,
-                    bgcolor: 'rgba(76,175,80,0.08)',
-                    border: '1px solid rgba(76,175,80,0.25)',
-                  }}
-                >
-                  <WhatsAppIcon sx={{ fontSize: 56, color: '#25D366', mb: 1 }} />
-                  <Typography variant="h6" fontWeight={800} color="success.dark">
-                    WhatsApp Connected
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                    {data?.linkedPhone || 'Your number is linked and ready to send messages.'}
-                  </Typography>
-                </Box>
-              ) : waitingForScan ? (
+              {waitingForScan ? (
                 <Stack alignItems="center" spacing={2}>
                   {qrImage ? (
                     <Box
@@ -398,10 +424,29 @@ export default function WhatsAppIntegrationPage() {
                   </Stack>
                   {!qrImage && (
                     <Typography variant="caption" color="text.secondary" textAlign="center">
-                      If the QR does not appear, click Refresh QR or Disconnect and connect again.
+                      {qrError || 'If the QR does not appear, click Refresh QR or Show QR / Relink.'}
                     </Typography>
                   )}
                 </Stack>
+              ) : sessionLinked ? (
+                <Box
+                  sx={{
+                    py: 4,
+                    px: 2,
+                    textAlign: 'center',
+                    borderRadius: 3,
+                    bgcolor: 'rgba(76,175,80,0.08)',
+                    border: '1px solid rgba(76,175,80,0.25)',
+                  }}
+                >
+                  <WhatsAppIcon sx={{ fontSize: 56, color: '#25D366', mb: 1 }} />
+                  <Typography variant="h6" fontWeight={800} color="success.dark">
+                    WhatsApp Connected
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    {data?.linkedPhone || 'Your number is linked and ready to send messages.'}
+                  </Typography>
+                </Box>
               ) : qrImage ? (
                 <Stack alignItems="center" spacing={2}>
                   <Box
@@ -416,14 +461,6 @@ export default function WhatsAppIntegrationPage() {
                       boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
                     }}
                   />
-                  {waitingForScan && (
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <CircularProgress size={18} />
-                      <Typography variant="body2" color="text.secondary">
-                        Waiting for scan…
-                      </Typography>
-                    </Stack>
-                  )}
                 </Stack>
               ) : (
                 <Box
@@ -439,28 +476,42 @@ export default function WhatsAppIntegrationPage() {
                 >
                   <QrCodeScannerIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
                   <Typography variant="body2" color="text.secondary">
-                    Click Connect WhatsApp to generate your QR code.
+                    Click Connect WhatsApp or Show QR / Relink to generate your QR code.
                   </Typography>
                 </Box>
               )}
 
-              <List dense sx={{ mt: 2 }}>
-                <ListItem sx={{ px: 0 }}>
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <PhoneAndroidIcon color="primary" fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="Open WhatsApp on your phone"
-                    secondary="Settings → Linked Devices → Link a Device"
-                  />
-                </ListItem>
-                <ListItem sx={{ px: 0 }}>
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <QrCodeScannerIcon sx={{ color: '#25D366' }} fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText primary="Scan the QR code shown here" secondary="Connection completes in a few seconds" />
-                </ListItem>
-              </List>
+              {waitingForScan || !sessionLinked ? (
+                <List dense sx={{ mt: 2 }}>
+                  <ListItem sx={{ px: 0 }}>
+                    <ListItemIcon sx={{ minWidth: 36 }}>
+                      <PhoneAndroidIcon color="primary" fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary="Open WhatsApp on your phone"
+                      secondary="Settings → Linked Devices → Link a Device"
+                    />
+                  </ListItem>
+                  <ListItem sx={{ px: 0 }}>
+                    <ListItemIcon sx={{ minWidth: 36 }}>
+                      <QrCodeScannerIcon sx={{ color: '#25D366' }} fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary="Scan the QR code shown here" secondary="Connection completes in a few seconds" />
+                  </ListItem>
+                </List>
+              ) : (
+                <List dense sx={{ mt: 2 }}>
+                  <ListItem sx={{ px: 0 }}>
+                    <ListItemIcon sx={{ minWidth: 36 }}>
+                      <WhatsAppIcon sx={{ color: '#25D366' }} fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary="WhatsApp is linked"
+                      secondary="Use Show QR / Relink if you need to scan a new QR code from your phone."
+                    />
+                  </ListItem>
+                </List>
+              )}
             </CardContent>
           </Card>
         </Grid>

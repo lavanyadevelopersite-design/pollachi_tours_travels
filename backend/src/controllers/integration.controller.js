@@ -9,7 +9,7 @@ const getWhatsApp = asyncHandler(async (req, res) => {
   if (!data.configured && process.env.WASENDER_API_KEY) {
     data = await integrationService.syncWhatsAppFromEnv(req.user?.id || null);
   }
-  if (data.sessionId && !data.sessionConnected) {
+  if (data.sessionId) {
     data = await integrationService.syncWhatsAppSessionStatus(req.user?.id || null);
   }
   res.json(ApiResponse.success('WhatsApp integration retrieved', data));

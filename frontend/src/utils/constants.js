@@ -1,10 +1,23 @@
 export const APP_NAME = import.meta.env.VITE_APP_NAME || 'Pollachi Tours and Travels';
-export const PUBLIC_ENQUIRY_PATH = '/enquire';
+export const PUBLIC_ENQUIRY_PATH = '/make_your_trip';
+export const PUBLIC_ENQUIRY_THANKS_PATH = `${PUBLIC_ENQUIRY_PATH}/thanks`;
 export const getPublicEnquiryUrl = () =>
   `${typeof window !== 'undefined' ? window.location.origin : ''}${PUBLIC_ENQUIRY_PATH}`;
 export const GOOGLE_REVIEW_URL =
   import.meta.env.VITE_GOOGLE_REVIEW_URL || 'https://g.page/r/CSvzO4Aq3ZZ9EAE/review';
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const resolveApiUrl = (raw) => {
+  const value = String(raw || '')
+    .trim()
+    .replace(/\/+$/, '');
+  if (!value) {
+    return import.meta.env.PROD ? '/api' : 'http://localhost:5000/api';
+  }
+  return /\/api$/i.test(value) ? value : `${value}/api`;
+};
+
+// Production must include /api (e.g. https://cms.pollachitours.com/api or /api).
+// A domain-only value posts to /auth/login and nginx returns 405 Method Not Allowed.
+export const API_URL = resolveApiUrl(import.meta.env.VITE_API_URL);
 export const API_BASE_URL = API_URL.replace(/\/api\/?$/, '');
 
 export const publicAssetUrl = (path = '') => {

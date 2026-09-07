@@ -11,7 +11,7 @@ const Designation = sequelize.define(
     },
     designation_code: {
       type: DataTypes.STRING(50),
-      allowNull: false,
+      allowNull: true,
       unique: true,
     },
     designation_name: {

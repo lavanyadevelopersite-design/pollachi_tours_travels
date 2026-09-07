@@ -88,7 +88,7 @@ export default function DesignationForm({
             <FormTextField name="designationName" control={control} label="Designation Name *" />
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
-            <FormTextField name="designationCode" control={control} label="Designation Code *" />
+            <FormTextField name="designationCode" control={control} label="Designation Code" />
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
             <FormSelect

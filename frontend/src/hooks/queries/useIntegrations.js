@@ -46,19 +46,38 @@ export const useIntegrationMutation = () => {
     },
   });
 
+  const markWhatsAppAwaitingScan = (payload = {}) => {
+    queryClient.setQueryData(['integrations', 'whatsapp'], (old) => ({
+      ...(old || {}),
+      sessionConnected: false,
+      sessionStatus: payload.status || 'NEED_SCAN',
+      needsQrScan: true,
+    }));
+  };
+
   const connectWhatsApp = useMutation({
     mutationFn: (payload) => integrationService.connectWhatsApp(payload),
     onSuccess: (res) => {
-      invalidateWhatsApp();
-      const connected = res?.data?.data?.connected;
+      const payload = res?.data?.data || {};
+      const hasQr = Boolean(payload.qrCode || payload.qrcode || payload.qr_code || payload.qr);
+      if (payload.connected && !hasQr) {
+        invalidateWhatsApp();
+      } else {
+        markWhatsAppAwaitingScan(payload);
+      }
       enqueueSnackbar(
-        connected ? 'WhatsApp is already connected' : 'Scan the QR code with your phone',
-        { variant: connected ? 'success' : 'info' }
+        payload.connected && !hasQr
+          ? 'WhatsApp is already connected'
+          : 'Scan the QR code with your phone',
+        { variant: payload.connected && !hasQr ? 'success' : 'info' }
       );
     },
     onError: (err) => {
       enqueueSnackbar(
-        err?.response?.data?.message || err?.message || 'Failed to start WhatsApp connection',
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message ||
+          'Failed to start WhatsApp connection',
         { variant: 'error' }
       );
     },
@@ -66,9 +85,8 @@ export const useIntegrationMutation = () => {
 
   const refreshWhatsAppQr = useMutation({
     mutationFn: () => integrationService.refreshWhatsAppQr(),
-    onSuccess: () => {
-      invalidateWhatsApp();
-      enqueueSnackbar('QR code refreshed', { variant: 'info' });
+    onSuccess: (res) => {
+      markWhatsAppAwaitingScan(res?.data?.data || {});
     },
     onError: (err) => {
       enqueueSnackbar(err?.response?.data?.message || 'Failed to refresh QR code', {
@@ -81,7 +99,7 @@ export const useIntegrationMutation = () => {
     mutationFn: () => integrationService.syncWhatsAppSession(),
     onSuccess: (res) => {
       invalidateWhatsApp();
-      if (res?.data?.data?.sessionConnected || res?.data?.data?.active) {
+      if (res?.data?.data?.sessionConnected) {
         enqueueSnackbar('WhatsApp connected successfully', { variant: 'success' });
       }
     },

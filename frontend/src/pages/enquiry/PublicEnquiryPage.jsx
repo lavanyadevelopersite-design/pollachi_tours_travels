@@ -43,7 +43,7 @@ import {
 } from '../../schemas/enquiry.schema';
 import enquiryService from '../../services/enquiry.service';
 import { useBranding } from '../../hooks/queries/useBranding';
-import { APP_NAME, resolveMediaUrl } from '../../utils/constants';
+import { APP_NAME, PUBLIC_ENQUIRY_THANKS_PATH, resolveMediaUrl } from '../../utils/constants';
 import { formatTripDuration } from '../../utils/formatters';
 
 function brandLogoSrc(path) {
@@ -106,6 +106,30 @@ export default function PublicEnquiryPage() {
   useEffect(() => {
     setLogoFailed(false);
   }, [logoUrl]);
+
+  useEffect(() => {
+    const previewTitle = 'pollachi tours & travels';
+    document.title = previewTitle;
+
+    const removeMeta = (attr, key) => {
+      document.querySelectorAll(`meta[${attr}="${key}"]`).forEach((el) => el.remove());
+    };
+    const setMeta = (attr, key, content) => {
+      let el = document.querySelector(`meta[${attr}="${key}"]`);
+      if (!el) {
+        el = document.createElement('meta');
+        el.setAttribute(attr, key);
+        document.head.appendChild(el);
+      }
+      el.setAttribute('content', content);
+    };
+
+    removeMeta('name', 'description');
+    removeMeta('property', 'og:description');
+    removeMeta('name', 'twitter:description');
+    setMeta('property', 'og:title', previewTitle);
+    setMeta('property', 'og:type', 'website');
+  }, []);
 
   const { control, handleSubmit, setValue, reset, getValues } = useForm({
     resolver: zodResolver(enquirySchema),
@@ -210,7 +234,7 @@ export default function PublicEnquiryPage() {
       try {
         const { data } = await enquiryService.publicSubmit(mapEnquiryToApi(values));
         const payload = data?.data || {};
-        navigate('/enquire/thanks', {
+        navigate(PUBLIC_ENQUIRY_THANKS_PATH, {
           state: {
             enquiryCode: payload.enquiry_code,
             customerName: payload.customer_name || values.customerName,

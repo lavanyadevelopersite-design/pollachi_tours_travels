@@ -212,7 +212,7 @@ export const departmentSchema = z.object({
 
 export const designationSchema = z.object({
   designationName: z.string().trim().min(1, 'Designation name is required').max(150),
-  designationCode: z.string().trim().min(1, 'Designation code is required').max(50),
+  designationCode: z.string().trim().max(50).optional().or(z.literal('')),
   departmentId: z.string().min(1, 'Department is required'),
   hierarchyLevel: z.coerce.number().int().optional().or(z.literal('')),
   description: z.string().optional().or(z.literal('')),
@@ -562,7 +562,9 @@ export const mapDepartmentToApi = (values) => ({
 
 export const mapDesignationToApi = (values) => ({
   designation_name: values.designationName.trim(),
-  designation_code: values.designationCode.trim().toUpperCase(),
+  designation_code: values.designationCode?.trim()
+    ? values.designationCode.trim().toUpperCase()
+    : null,
   department_id: values.departmentId,
   hierarchy_level:
     values.hierarchyLevel === '' || values.hierarchyLevel == null

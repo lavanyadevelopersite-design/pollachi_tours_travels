@@ -35,12 +35,9 @@ const errorHandler = (err, req, res, next) => {
     logger.warn('%s %s - %s', req.method, req.originalUrl, message);
   }
 
-  const response = ApiResponse.error(
-    process.env.NODE_ENV === 'production' && statusCode >= 500
-      ? 'Internal server error'
-      : message,
-    errors
-  );
+  const hideDetails =
+    process.env.NODE_ENV === 'production' && statusCode >= 500 && !(err instanceof AppError);
+  const response = ApiResponse.error(hideDetails ? 'Internal server error' : message, errors);
 
   res.status(statusCode).json(response);
 };

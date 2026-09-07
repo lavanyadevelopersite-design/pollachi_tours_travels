@@ -188,7 +188,7 @@ CREATE TABLE IF NOT EXISTS `tt_departments` (
 
 CREATE TABLE IF NOT EXISTS `tt_designations` (
   `id` CHAR(36) NOT NULL,
-  `designation_code` VARCHAR(50) NOT NULL,
+  `designation_code` VARCHAR(50) DEFAULT NULL,
   `designation_name` VARCHAR(150) NOT NULL,
   `department_id` CHAR(36) NOT NULL,
   `hierarchy_level` INT DEFAULT NULL,

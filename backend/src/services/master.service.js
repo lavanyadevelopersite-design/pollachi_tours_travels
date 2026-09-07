@@ -426,15 +426,16 @@ const assertUniqueDesignation = async (
   excludeId = null
 ) => {
   const nameWhere = { department_id, designation_name };
-  const codeWhere = { designation_code };
-  if (excludeId) {
-    nameWhere.id = { [Op.ne]: excludeId };
-    codeWhere.id = { [Op.ne]: excludeId };
-  }
+  if (excludeId) nameWhere.id = { [Op.ne]: excludeId };
   const existingName = await Designation.findOne({ where: nameWhere });
   if (existingName) {
     throw new AppError('Designation name already exists for the selected department', 409);
   }
+
+  const code = designation_code == null ? '' : String(designation_code).trim();
+  if (!code) return;
+  const codeWhere = { designation_code: code };
+  if (excludeId) codeWhere.id = { [Op.ne]: excludeId };
   const existingCode = await Designation.findOne({ where: codeWhere });
   if (existingCode) throw new AppError('Designation code already exists', 409);
 };
@@ -444,14 +445,16 @@ const designationBase = createCrudService(Designation, {
   defaultIncludes: [
     { model: Department, as: 'department', attributes: ['id', 'department_name', 'department_code'] },
   ],
-  codeField: 'designation_code',
-  codePrefix: 'DES',
 });
 
 const designationService = {
   ...designationBase,
   create: async (payload, userId = null) => {
-    const data = normalizeOptionalFields(payload, ['hierarchy_level', 'description']);
+    const data = normalizeOptionalFields(payload, [
+      'hierarchy_level',
+      'description',
+      'designation_code',
+    ]);
     if (data.designation_code) data.designation_code = String(data.designation_code).toUpperCase();
     const department = await Department.findByPk(data.department_id);
     if (!department) throw new AppError('Selected department does not exist', 400);
@@ -459,12 +462,17 @@ const designationService = {
     return designationBase.create(data, userId);
   },
   update: async (id, payload, userId = null) => {
-    const data = normalizeOptionalFields(payload, ['hierarchy_level', 'description']);
+    const data = normalizeOptionalFields(payload, [
+      'hierarchy_level',
+      'description',
+      'designation_code',
+    ]);
     if (data.designation_code) data.designation_code = String(data.designation_code).toUpperCase();
     const existing = await designationBase.getById(id);
     const departmentId = data.department_id || existing.department_id;
     const designationName = data.designation_name || existing.designation_name;
-    const designationCode = data.designation_code || existing.designation_code;
+    const designationCode =
+      data.designation_code !== undefined ? data.designation_code : existing.designation_code;
     if (data.department_id) {
       const department = await Department.findByPk(data.department_id);
       if (!department) throw new AppError('Selected department does not exist', 400);

@@ -31,17 +31,15 @@ const logger = winston.createLogger({
   ],
 });
 
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.printf(({ level, message, timestamp, stack }) =>
-          `${timestamp} [${level}]: ${stack || message}`
-        )
-      ),
-    })
-  );
-}
+logger.add(
+  new winston.transports.Console({
+    format: winston.format.combine(
+      winston.format.colorize({ all: process.env.NODE_ENV !== 'production' }),
+      winston.format.printf(({ level, message, timestamp, stack }) =>
+        `${timestamp} [${level}]: ${stack || message}`
+      )
+    ),
+  })
+);
 
 module.exports = logger;

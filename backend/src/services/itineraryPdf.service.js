@@ -4,13 +4,7 @@ const PDFDocument = require('pdfkit');
 const dayjs = require('dayjs');
 const logger = require('../config/logger');
 
-let puppeteer = null;
-try {
-  // eslint-disable-next-line global-require, import/no-extraneous-dependencies
-  puppeteer = require('puppeteer');
-} catch {
-  logger.warn('puppeteer is not available; using text-based itinerary PDF fallback');
-}
+const { getPuppeteer, launchOptions } = require('../utils/puppeteerBrowser');
 
 const THEME_COLORS = {
   dream_vacay: { primary: '#0d9488', secondary: '#134e4a' },
@@ -66,6 +60,7 @@ const buildPreviewPdfUrl = (shareToken) =>
   `${getPublicAppBaseUrl()}/i/${encodeURIComponent(shareToken)}?pdf=1`;
 
 const generatePdfFromPreview = async (shareToken) => {
+  const puppeteer = getPuppeteer();
   if (!puppeteer) {
     throw new Error('puppeteer_not_installed');
   }
@@ -74,10 +69,7 @@ const generatePdfFromPreview = async (shareToken) => {
   }
 
   const url = buildPreviewPdfUrl(shareToken);
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-  });
+  const browser = await puppeteer.launch(launchOptions());
 
   try {
     const page = await browser.newPage();

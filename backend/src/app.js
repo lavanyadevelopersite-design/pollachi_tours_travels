@@ -11,6 +11,19 @@ const { globalLimiter } = require('./middleware/rateLimiter.middleware');
 const sanitize = require('./middleware/sanitize.middleware');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler.middleware');
 const routes = require('./routes');
+const healthRoutes = require('./routes/health.routes');
+
+const resolveFrontendDist = () => {
+  const candidates = [
+    process.env.FRONTEND_DIST,
+    path.join(__dirname, '../../frontned/dist'),
+    path.join(__dirname, '../../frontend/dist'),
+    path.join(__dirname, '../../dist'),
+  ].filter(Boolean);
+  return candidates.find((dir) => fs.existsSync(path.join(dir, 'index.html'))) || null;
+};
+
+const frontendDist = resolveFrontendDist();
 
 const app = express();
 
@@ -20,10 +33,10 @@ app.use(
   helmet({
     // Allow the Vite/SPA origin to embed uploaded images from this API host
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    contentSecurityPolicy: false,
   })
 );
 app.use(corsMiddleware);
-app.use(globalLimiter);
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -70,8 +83,31 @@ app.use(
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
 app.get('/api/docs.json', (req, res) => res.json(swaggerSpec));
 
-app.get('/', (req, res) => {
-  res.type('html').send(`<!DOCTYPE html>
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', service: 'tours-travels-crm-api' });
+});
+
+app.use('/api/health', healthRoutes);
+app.use('/api', globalLimiter, routes);
+
+if (frontendDist) {
+  app.use(express.static(frontendDist));
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+    if (
+      req.path.startsWith('/api') ||
+      req.path.startsWith('/uploads') ||
+      req.path === '/health' ||
+      req.path.startsWith('/health/')
+    ) {
+      return next();
+    }
+    if (path.extname(req.path)) return next();
+    return res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+} else {
+  app.get('/', (req, res) => {
+    res.type('html').send(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -89,21 +125,16 @@ app.get('/', (req, res) => {
 <body>
   <main>
     <h1>Tours &amp; Travels CRM API</h1>
-    <p>Backend is running. This host serves the API only — use the frontend app to sign in.</p>
+    <p>Backend is running. Build the frontend (frontned/dist) or proxy /api from Nginx.</p>
     <p>
       <a href="/api/docs">API Docs</a>
-      <a href="http://localhost:5173">Open App</a>
+      <a href="/api/health">Health</a>
     </p>
   </main>
 </body>
 </html>`);
-});
-
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'tours-travels-crm-api' });
-});
-
-app.use('/api', routes);
+  });
+}
 
 app.use(notFoundHandler);
 app.use(errorHandler);

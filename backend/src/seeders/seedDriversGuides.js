@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('../config/loadEnv');
 
 const { connectDatabase } = require('../config/database');
 const logger = require('../config/logger');

@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('./loadEnv');
 
 module.exports = {
   accessSecret: process.env.JWT_ACCESS_SECRET || 'change_me_access_secret_min_32_chars',

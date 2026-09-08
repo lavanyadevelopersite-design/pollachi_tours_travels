@@ -1,3 +1,4 @@
+const path = require('path');
 const swaggerJsdoc = require('swagger-jsdoc');
 
 const options = {
@@ -13,8 +14,8 @@ const options = {
     },
     servers: [
       {
-        url: `http://localhost:${process.env.PORT || 5000}`,
-        description: 'Development server',
+        url: process.env.PUBLIC_API_URL || `http://127.0.0.1:${process.env.PORT || 5000}`,
+        description: 'API',
       },
     ],
     components: {
@@ -49,7 +50,7 @@ const options = {
     },
     security: [{ bearerAuth: [] }],
   },
-  apis: ['./src/routes/*.js', './src/docs/*.yaml'],
+  apis: [path.join(__dirname, '../routes/*.js'), path.join(__dirname, '../docs/*.yaml')],
 };
 
 const swaggerSpec = swaggerJsdoc(options);

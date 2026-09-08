@@ -1,24 +1,41 @@
 const cors = require('cors');
 
+const stripSlash = (value) => String(value || '').trim().replace(/\/+$/, '');
+
+const collectAllowedOrigins = () => {
+  const raw = [process.env.CORS_ORIGIN, process.env.PUBLIC_APP_URL]
+    .filter(Boolean)
+    .join(',');
+  const fallback = 'http://localhost:5173,http://localhost:5174';
+  return (raw || fallback)
+    .split(',')
+    .map(stripSlash)
+    .filter(Boolean);
+};
+
 const corsOptions = {
   origin: (origin, callback) => {
-    const allowed = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:5174')
-      .split(',')
-      .map((o) => o.trim());
-    const publicApp = String(process.env.PUBLIC_APP_URL || '').trim().replace(/\/$/, '');
-    if (publicApp) allowed.push(publicApp);
+    const allowed = collectAllowedOrigins();
 
-    // Allow local Vite/dev ports when origin is localhost
-    const isLocalDev =
-      !origin ||
-      /^http:\/\/localhost:\d+$/.test(origin) ||
-      /^http:\/\/127\.0\.0\.1:\d+$/.test(origin);
-
-    if (allowed.includes('*') || allowed.includes(origin) || (process.env.NODE_ENV !== 'production' && isLocalDev)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+    // curl, health checks, same-origin navigation without Origin
+    if (!origin) {
+      return callback(null, true);
     }
+
+    const normalized = stripSlash(origin);
+    if (allowed.includes('*') || allowed.includes(normalized)) {
+      return callback(null, true);
+    }
+
+    const isLocalDev =
+      /^http:\/\/localhost:\d+$/.test(normalized) ||
+      /^http:\/\/127\.0\.0\.1:\d+$/.test(normalized);
+
+    if (process.env.NODE_ENV !== 'production' && isLocalDev) {
+      return callback(null, true);
+    }
+
+    return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

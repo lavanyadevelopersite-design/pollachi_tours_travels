@@ -21,6 +21,23 @@ import { resolveMediaUrl } from '../../utils/constants';
 const LOGIN_TITLE = 'Pollachi Tours and Travels';
 const LOGIN_SUBTITLE = 'Great Journeys & Fascinating Places';
 
+function getLoginErrorMessage(err) {
+  const status = err?.response?.status;
+  const data = err?.response?.data;
+  const apiMessage = typeof data === 'object' && data ? data.message : null;
+
+  if (!err?.response || status === 502 || status === 503 || status === 504) {
+    return 'Unable to reach the server. The API is not running.';
+  }
+  if (typeof apiMessage === 'string' && apiMessage.trim() && !apiMessage.includes('<')) {
+    return apiMessage;
+  }
+  if (status >= 500) {
+    return 'Server error. Please try again.';
+  }
+  return 'Invalid email or password';
+}
+
 function brandLogoSrc(path) {
   const url = resolveMediaUrl(path);
   if (!url) return null;
@@ -54,14 +71,7 @@ export default function Login() {
     try {
       await login(values);
     } catch (err) {
-      const apiMessage = err?.response?.data?.message;
-      if (apiMessage) {
-        setError(apiMessage);
-      } else if (!err?.response) {
-        setError('Unable to reach the server. Please check that the backend is running.');
-      } else {
-        setError('Invalid email or password');
-      }
+      setError(getLoginErrorMessage(err));
     } finally {
       setLoading(false);
     }
